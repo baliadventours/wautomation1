@@ -176,6 +176,64 @@ class EvolutionApiGatewayClient {
     };
   }
 
+  async fetchPairingCode(instanceName: string, phoneNumber: string): Promise<{ pairingCode?: string; error?: string }> {
+    const safeInstance = instanceName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    const cleanNumber = phoneNumber.replace(/\D/g, '');
+    if (!cleanNumber || cleanNumber.length < 8) {
+      return { error: 'Please enter a valid international phone number with country code (e.g. 6281234567890).' };
+    }
+
+    try {
+      // 1. Ensure instance exists in Evolution API
+      try {
+        await fetch(`${this.gatewayUrl}/instance/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: this.apiKey,
+          },
+          body: JSON.stringify({
+            instanceName: safeInstance,
+            token: this.apiKey,
+            qrcode: false,
+            number: cleanNumber,
+            integration: 'WHATSAPP-BAILEYS',
+          }),
+        });
+      } catch {
+        // May already exist
+      }
+
+      // 2. Request pairing code
+      const connectRes = await fetch(`${this.gatewayUrl}/instance/connect/${safeInstance}?number=${cleanNumber}`, {
+        headers: { apikey: this.apiKey },
+      });
+      if (connectRes.ok) {
+        const data = await connectRes.json();
+        const code = data.pairingCode || data.code;
+        if (code) {
+          return { pairingCode: code };
+        }
+      }
+
+      // 3. Alternate pairingCode endpoint
+      const altRes = await fetch(`${this.gatewayUrl}/instance/pairingCode/${safeInstance}?number=${cleanNumber}`, {
+        headers: { apikey: this.apiKey },
+      });
+      if (altRes.ok) {
+        const altData = await altRes.json();
+        const code = altData.pairingCode || altData.code;
+        if (code) {
+          return { pairingCode: code };
+        }
+      }
+
+      return { error: 'WhatsApp Gateway did not return a pairing code. Please make sure the number is registered on WhatsApp.' };
+    } catch (err: any) {
+      return { error: `Gateway error: ${err.message}` };
+    }
+  }
+
   async getConnectionState(instanceName: string): Promise<{ state: string; isLive: boolean; ownerJid?: string; profileName?: string }> {
     const safeInstance = instanceName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
     try {
@@ -698,6 +756,44 @@ async function startServer() {
       expiresIn: 45,
       status: tenant.whatsappAccount.status,
       error,
+    });
+  });
+
+  // 2b. WhatsApp 8-Character Pairing Code API (Direct Phone Number Linking)
+  app.get('/api/v1/tenants/:id/pairing-code', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { number } = req.query;
+    if (!number || typeof number !== 'string') {
+      res.status(400).json({ error: 'Phone number query parameter is required (e.g. ?number=6281234567890)' });
+      return;
+    }
+
+    let tenant = db.getTenant(id);
+    if (!tenant) {
+      tenant = db.addTenant({
+        id,
+        name: 'WhatsApp Workspace',
+        businessType: 'Tour & Activity Operator',
+        plan: 'Pro',
+        apiKey: `wac_live_${id.replace(/[^a-zA-Z0-9]/g, '')}`,
+        webhookSecret: `whsec_tripbone_${id.slice(-6)}`,
+        strictSignatureVerification: false,
+        createdAt: new Date().toISOString().split('T')[0],
+        whatsappAccount: { status: 'disconnected' },
+      });
+    }
+
+    const result = await evolutionGateway.fetchPairingCode(tenant.id, number);
+    if (result.error) {
+      res.status(400).json({ success: false, error: result.error });
+      return;
+    }
+
+    res.json({
+      success: true,
+      tenantId: tenant.id,
+      pairingCode: result.pairingCode,
+      number,
     });
   });
 
