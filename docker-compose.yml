@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # 1. WhatsCRM Core App (React UI + Express REST API)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whatscrm_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://whatscrm:secure_whatscrm_pass_2026@postgres:5432/whatscrm_production
+      - REDIS_URL=redis://:secure_redis_pass_2026@redis:6379/0
+      - WHATSAPP_GATEWAY_URL=http://whatsapp_gateway:8080
+      - WHATSAPP_GATEWAY_API_KEY=wac_gateway_master_key_8921a
+      - TRIPBONE_WEBHOOK_SECRET=tb_sec_9918a72b01c
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      whatsapp_gateway:
+        condition: service_started
+    volumes:
+      - ./data:/app/data
+
+  # 2. WhatsApp Multi-Device Gateway Daemon (Evolution API v2)
+  whatsapp_gateway:
+    image: atendai/evolution-api:v2.1.2
+    container_name: whatscrm_gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - AUTHENTICATION_API_KEY=wac_gateway_master_key_8921a
+      - DATABASE_ENABLED=true
+      - DATABASE_CONNECTION_URI=postgresql://whatscrm:secure_whatscrm_pass_2026@postgres:5432/whatscrm_production
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://:secure_redis_pass_2026@redis:6379/1
+      - WEBHOOK_GLOBAL_URL=http://app:3000/api/webhooks/whatsapp
+      - CONFIG_SESSION_PHONE_CLIENT=WhatsCRM
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - gateway_instances:/evolution/instances
+
+  # 3. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: whatscrm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: whatscrm
+      POSTGRES_PASSWORD: secure_whatscrm_pass_2026
+      POSTGRES_DB: whatscrm_production
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U whatscrm -d whatscrm_production"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 4. Redis Cache & Job Queue
+  redis:
+    image: redis:7-alpine
+    container_name: whatscrm_redis
+    restart: unless-stopped
+    command: redis-server --requirepass secure_redis_pass_2026 --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "secure_redis_pass_2026", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  gateway_instances:

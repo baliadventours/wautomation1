@@ -1,0 +1,243 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  *, html, body, button, input, textarea, select {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* ==========================================================================
+   SuperAdmin Modern Executive & Premium Theme Scoped Overrides
+   Provides an ultra-crisp, high-contrast enterprise aesthetic (Linear/Stripe)
+   ========================================================================== */
+
+/* Light Theme: Ultra-Crisp Editorial Swiss SaaS */
+.superadmin-light {
+  color-scheme: light;
+  background-color: #f8fafc !important;
+  color: #0f172a;
+}
+
+.superadmin-light .bg-neutral-950 {
+  background-color: #f8fafc !important;
+}
+
+/* Standard cards become clean white surfaces */
+.superadmin-light .bg-neutral-900:not([class*="text-white"]):not(button):not(aside) {
+  background-color: #ffffff !important;
+  color: #0f172a;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02) !important;
+}
+
+.superadmin-light .bg-neutral-800:not(button):not([class*="text-white"]) {
+  background-color: #f1f5f9 !important;
+}
+
+.superadmin-light .border-neutral-800,
+.superadmin-light .border-neutral-800\/80,
+.superadmin-light .border-neutral-800\/60,
+.superadmin-light .border-neutral-800\/50,
+.superadmin-light .border-neutral-800\/40 {
+  border-color: #e2e8f0 !important;
+}
+
+.superadmin-light .border-neutral-700 {
+  border-color: #cbd5e1 !important;
+}
+
+.superadmin-light .border-neutral-600 {
+  border-color: #94a3b8 !important;
+}
+
+/* Form controls in light mode */
+.superadmin-light input:not([class*="bg-slate-950"]):not([class*="bg-slate-900"]),
+.superadmin-light textarea:not([class*="bg-slate-950"]):not([class*="bg-slate-900"]),
+.superadmin-light select:not([class*="bg-slate-950"]):not([class*="bg-slate-900"]) {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.superadmin-light input::placeholder,
+.superadmin-light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* ==========================================================================
+   CRITICAL CONTRAST FIXES:
+   Dark buttons, banners, badges, and code blocks in light mode must NEVER
+   have black or dark text. They must always display crisp, legible white text!
+   ========================================================================== */
+
+/* Explicit White Text Enforcement for Dark Elements in Light Mode */
+.superadmin-light .bg-slate-900,
+.superadmin-light .bg-slate-950,
+.superadmin-light .bg-slate-800,
+.superadmin-light .bg-black,
+.superadmin-light button.bg-slate-900,
+.superadmin-light button.bg-slate-950,
+.superadmin-light a.bg-slate-900,
+.superadmin-light .bg-indigo-600,
+.superadmin-light .bg-purple-600,
+.superadmin-light .bg-emerald-600 {
+  color: #ffffff !important;
+}
+
+.superadmin-light .bg-slate-900 span,
+.superadmin-light .bg-slate-900 p,
+.superadmin-light .bg-slate-900 svg,
+.superadmin-light .bg-slate-950 span,
+.superadmin-light .bg-slate-950 p,
+.superadmin-light .bg-slate-950 svg,
+.superadmin-light .bg-slate-950 code,
+.superadmin-light button.bg-slate-900 *,
+.superadmin-light button.bg-slate-800 * {
+  color: #ffffff !important;
+}
+
+/* Specific Banner Contrast */
+.superadmin-light .bg-slate-900 h1,
+.superadmin-light .bg-slate-900 h2,
+.superadmin-light .bg-slate-900 h3 {
+  color: #ffffff !important;
+}
+
+.superadmin-light .bg-slate-900 .text-slate-300 {
+  color: #cbd5e1 !important;
+}
+
+.superadmin-light .bg-slate-900 .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+/* Code blocks in terminal/guide */
+.superadmin-light .bg-slate-950 {
+  background-color: #020617 !important;
+  color: #f1f5f9 !important;
+}
+
+.superadmin-light .bg-slate-950 code,
+.superadmin-light pre.bg-slate-950,
+.superadmin-light .bg-slate-950 pre {
+  color: #38bdf8 !important;
+}
+
+/* Sidebar Active Item Contrast in Light Mode */
+.superadmin-light aside button.bg-slate-900,
+.superadmin-light aside .bg-slate-900 {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+.superadmin-light aside button.bg-slate-900 span,
+.superadmin-light aside button.bg-slate-900 svg,
+.superadmin-light aside button.bg-slate-900 .truncate {
+  color: #ffffff !important;
+}
+
+/* Badges inside active sidebar item */
+.superadmin-light aside button.bg-slate-900 .rounded {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Header Action Buttons in Light Mode */
+.superadmin-light button.bg-slate-900,
+.superadmin-light button.bg-slate-900 span,
+.superadmin-light button.bg-slate-900 svg {
+  color: #ffffff !important;
+}
+
+/* Restrained, dignified pill styling in light mode */
+.superadmin-light .bg-emerald-950 {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
+.superadmin-light .text-emerald-300,
+.superadmin-light .text-emerald-400 {
+  color: #059669 !important;
+}
+
+.superadmin-light .bg-blue-950 {
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #bfdbfe !important;
+}
+
+.superadmin-light .text-blue-300,
+.superadmin-light .text-blue-400 {
+  color: #2563eb !important;
+}
+
+/* Dark Theme Fine-Tuning: Deep Obsidian Titanium */
+.superadmin-dark {
+  color-scheme: dark;
+  background-color: #090d16;
+}
+
+.superadmin-dark .bg-neutral-950 {
+  background-color: #090d16;
+}
+
+.superadmin-dark .bg-neutral-900 {
+  background-color: #0f1523;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.superadmin-dark .border-neutral-800 {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Light Theme: High-Contrast Table and Text Refinements */
+.superadmin-light th {
+  color: #475569 !important;
+  background-color: #f1f5f9 !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+.superadmin-light td {
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+}
+
+.superadmin-light tr:hover {
+  background-color: #f8fafc !important;
+}
+
+.superadmin-light .text-neutral-300,
+.superadmin-light .text-neutral-400 {
+  color: #475569 !important;
+}
+
+.superadmin-light .text-neutral-500 {
+  color: #64748b !important;
+}
+
+.superadmin-light .text-white:not([class*="bg-"]):not(button):not(.text-white) {
+  color: #0f172a !important;
+}
+
+/* Ensure white text inside dark buttons in both themes */
+.superadmin-light button.bg-slate-900,
+.superadmin-light button.bg-slate-800,
+.superadmin-light button.bg-emerald-600,
+.superadmin-light button.bg-purple-600,
+.superadmin-light button.bg-indigo-600,
+.superadmin-dark button.bg-slate-900,
+.superadmin-dark button.bg-slate-800,
+.superadmin-dark button.bg-emerald-600,
+.superadmin-dark button.bg-purple-600,
+.superadmin-dark button.bg-indigo-600 {
+  color: #ffffff !important;
+}
+

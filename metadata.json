@@ -1,0 +1,6 @@
+{
+  "name": "Whapi.Cloud - WhatsApp API Gateway & Developer Platform",
+  "description": "Developer-friendly WhatsApp REST API Gateway with multi-channel management, interactive Swagger API explorer, real-time webhooks, phone number checker, automated number warming, and no-code integrations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
