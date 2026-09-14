@@ -555,24 +555,37 @@ async function startServer() {
   });
 
   app.post('/api/v1/tenants', (req: Request, res: Response) => {
-    const { name, businessType, plan } = req.body;
-    if (!name) {
-      res.status(400).json({ error: 'Name is required' });
+    const { id, name, businessType, plan, apiKey, webhookSecret, whatsappAccount } = req.body;
+    if (!name && !id) {
+      res.status(400).json({ error: 'Name or ID is required' });
       return;
     }
 
-    const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const tenantName = (name || id || 'Business Workspace').trim();
+    const slug = tenantName.toLowerCase().replace(/[^a-z0-9]/g, '');
     const randomHex = crypto.randomBytes(4).toString('hex');
+    const tenantId = id || `tenant-${slug}-${Date.now().toString().slice(-4)}`;
+
+    const existing = db.getTenant(tenantId);
+    if (existing) {
+      res.json({
+        success: true,
+        data: existing,
+        message: 'Tenant already active.',
+      });
+      return;
+    }
+
     const newTenant: Tenant = {
-      id: `tenant-${slug}-${Date.now().toString().slice(-4)}`,
-      name: name.trim(),
+      id: tenantId,
+      name: tenantName,
       businessType: businessType || 'Tour & Activity Operator',
       plan: plan || 'Pro',
-      apiKey: `wac_live_${randomHex}_${slug}`,
-      webhookSecret: `whsec_tripbone_${crypto.randomBytes(6).toString('hex')}`,
+      apiKey: apiKey || `wac_live_${randomHex}_${slug}`,
+      webhookSecret: webhookSecret || `whsec_tripbone_${crypto.randomBytes(6).toString('hex')}`,
       strictSignatureVerification: false,
       createdAt: new Date().toISOString().split('T')[0],
-      whatsappAccount: {
+      whatsappAccount: whatsappAccount || {
         status: 'disconnected',
       },
     };
@@ -656,10 +669,19 @@ async function startServer() {
   // 2. WhatsApp QR & Pairing Session API
   app.get('/api/v1/tenants/:id/qr', async (req: Request, res: Response) => {
     const { id } = req.params;
-    const tenant = db.getTenant(id);
+    let tenant = db.getTenant(id);
     if (!tenant) {
-      res.status(404).json({ error: 'Tenant not found' });
-      return;
+      tenant = db.addTenant({
+        id,
+        name: 'WhatsApp Workspace',
+        businessType: 'Tour & Activity Operator',
+        plan: 'Pro',
+        apiKey: `wac_live_${id.replace(/[^a-zA-Z0-9]/g, '')}`,
+        webhookSecret: `whsec_tripbone_${id.slice(-6)}`,
+        strictSignatureVerification: false,
+        createdAt: new Date().toISOString().split('T')[0],
+        whatsappAccount: { status: 'disconnected' },
+      });
     }
 
     const { qrString, base64, isLive, state, pairingCode } = await evolutionGateway.fetchQrCode(tenant.id);
@@ -680,10 +702,19 @@ async function startServer() {
   // Check live connection state (polled by UI while QR is displayed)
   app.get('/api/v1/tenants/:id/connection-status', async (req: Request, res: Response) => {
     const { id } = req.params;
-    const tenant = db.getTenant(id);
+    let tenant = db.getTenant(id);
     if (!tenant) {
-      res.status(404).json({ error: 'Tenant not found' });
-      return;
+      tenant = db.addTenant({
+        id,
+        name: 'WhatsApp Workspace',
+        businessType: 'Tour & Activity Operator',
+        plan: 'Pro',
+        apiKey: `wac_live_${id.replace(/[^a-zA-Z0-9]/g, '')}`,
+        webhookSecret: `whsec_tripbone_${id.slice(-6)}`,
+        strictSignatureVerification: false,
+        createdAt: new Date().toISOString().split('T')[0],
+        whatsappAccount: { status: 'disconnected' },
+      });
     }
 
     const conn = await evolutionGateway.getConnectionState(tenant.id);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Tenant, 
   NavigationTab, 
@@ -58,6 +58,26 @@ export default function App() {
   const [activeWhapiChannelId, setActiveWhapiChannelId] = useState<string>(INITIAL_WHAPI_CHANNELS[0].id);
   const [isNewTenantModalOpen, setIsNewTenantModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Auto-sync tenants from server DB on load
+  useEffect(() => {
+    fetch('/api/v1/tenants')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setTenants((prev) => {
+            const map = new Map<string, Tenant>();
+            prev.forEach((t) => map.set(t.id, t));
+            data.data.forEach((t: Tenant) => {
+              const existing = map.get(t.id);
+              map.set(t.id, existing ? { ...existing, ...t } : t);
+            });
+            return Array.from(map.values());
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const activeWhapiChannel = whapiChannels.find(c => c.id === activeWhapiChannelId) || whapiChannels[0];
 
@@ -152,11 +172,21 @@ export default function App() {
   };
 
   // Add new business tenant
-  const handleAddTenant = (newTenant: Tenant) => {
+  const handleAddTenant = async (newTenant: Tenant) => {
     setTenants((prev) => [...prev, newTenant]);
     setCurrentTenantId(newTenant.id);
     setCurrentTab('qr-link');
     showToast(`Workspace "${newTenant.name}" created! Connect WhatsApp to begin.`);
+
+    try {
+      await fetch('/api/v1/tenants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTenant),
+      });
+    } catch {
+      // Backend auto-provisions on request if offline
+    }
   };
 
   // Update plan for current tenant

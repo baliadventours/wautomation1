@@ -41,7 +41,23 @@ export const QrLinkView: React.FC<QrLinkViewProps> = ({
     setLoadingQr(true);
     setErrorMessage(null);
     try {
-      const res = await fetch(`/api/v1/tenants/${tenant.id}/qr`);
+      let res = await fetch(`/api/v1/tenants/${tenant.id}/qr`);
+      
+      // If 404, register tenant on backend and retry immediately
+      if (res.status === 404) {
+        await fetch('/api/v1/tenants', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: tenant.id,
+            name: tenant.name,
+            businessType: tenant.businessType,
+            plan: tenant.plan,
+          }),
+        });
+        res = await fetch(`/api/v1/tenants/${tenant.id}/qr`);
+      }
+
       const data = await res.json();
       if (data.success) {
         if (data.status === 'connected') {
@@ -58,7 +74,7 @@ export const QrLinkView: React.FC<QrLinkViewProps> = ({
     } finally {
       setLoadingQr(false);
     }
-  }, [tenant.id]);
+  }, [tenant.id, tenant.name, tenant.businessType, tenant.plan]);
 
   // Initial load when not connected
   useEffect(() => {
