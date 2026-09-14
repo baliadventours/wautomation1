@@ -51,7 +51,7 @@ class EvolutionApiGatewayClient {
     }
   }
 
-  async fetchQrCode(instanceName: string): Promise<{ qrString: string; base64?: string; isLive: boolean; state?: string; pairingCode?: string }> {
+  async fetchQrCode(instanceName: string): Promise<{ qrString: string; base64?: string; isLive: boolean; state?: string; pairingCode?: string; error?: string }> {
     const safeInstance = instanceName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
 
     try {
@@ -160,18 +160,19 @@ class EvolutionApiGatewayClient {
       }
     } catch (err: any) {
       console.warn('Gateway fetchQrCode warning:', err.message);
+      return {
+        qrString: '',
+        isLive: false,
+        state: 'error',
+        error: `Evolution API Gateway is starting or unreachable: ${err.message}`,
+      };
     }
 
-    // 4. If gateway container is booting up or unreachable, generate actual valid QR matrix image
-    const pairingRef = crypto.randomBytes(16).toString('base64');
-    const publicKey = crypto.randomBytes(32).toString('base64');
-    const fallbackString = `2@${pairingRef},${publicKey},${safeInstance},${Date.now()}`;
-    const fallbackBase64 = await QRCode.toDataURL(fallbackString, { width: 320, margin: 2 });
     return {
-      qrString: fallbackString,
-      base64: fallbackBase64,
+      qrString: '',
       isLive: false,
-      state: 'connecting',
+      state: 'error',
+      error: 'WhatsApp gateway daemon has not provided a pairing QR code yet. Please check gateway container status.',
     };
   }
 
@@ -684,10 +685,10 @@ async function startServer() {
       });
     }
 
-    const { qrString, base64, isLive, state, pairingCode } = await evolutionGateway.fetchQrCode(tenant.id);
+    const { qrString, base64, isLive, state, pairingCode, error } = await evolutionGateway.fetchQrCode(tenant.id);
 
     res.json({
-      success: true,
+      success: !error && Boolean(base64),
       tenantId: tenant.id,
       qrString,
       base64,
@@ -696,6 +697,7 @@ async function startServer() {
       state: state || 'connecting',
       expiresIn: 45,
       status: tenant.whatsappAccount.status,
+      error,
     });
   });
 

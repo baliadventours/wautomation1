@@ -38,15 +38,24 @@ services:
     environment:
       - SERVER_PORT=8080
       - AUTHENTICATION_API_KEY=wac_gateway_master_key_8921a
+      - DATABASE_PROVIDER=postgresql
       - DATABASE_ENABLED=true
       - DATABASE_CONNECTION_URI=postgresql://whatscrm:secure_whatscrm_pass_2026@postgres:5432/whatscrm_production
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution_api
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - DATABASE_SAVE_MESSAGE_HISTORIC=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://:secure_redis_pass_2026@redis:6379/1
       - WEBHOOK_GLOBAL_URL=http://app:3000/api/webhooks/whatsapp
-      - CONFIG_SESSION_PHONE_CLIENT=WhatsCRM
+      - CONFIG_SESSION_PHONE_CLIENT=Chrome
+      - DEL_INSTANCE=false
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - gateway_instances:/evolution/instances
 
