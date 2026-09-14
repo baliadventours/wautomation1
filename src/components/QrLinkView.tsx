@@ -106,19 +106,16 @@ export const QrLinkView: React.FC<QrLinkViewProps> = ({
     }
     setDisconnecting(true);
     try {
-      const res = await fetch(`/api/v1/tenants/${tenant.id}/whatsapp/disconnect`, { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        onUpdateAccount({
-          status: 'disconnected',
-        });
-        setQrBase64(null);
-        setTimeout(() => fetchLiveQr(), 600);
-      }
-    } catch {
-      alert('Error disconnecting session.');
+      await fetch(`/api/v1/tenants/${tenant.id}/whatsapp/disconnect`, { method: 'POST' });
+    } catch (e) {
+      console.warn('Disconnect endpoint warning:', e);
     } finally {
+      onUpdateAccount({
+        status: 'disconnected',
+      });
+      setQrBase64(null);
       setDisconnecting(false);
+      setTimeout(() => fetchLiveQr(), 300);
     }
   };
 

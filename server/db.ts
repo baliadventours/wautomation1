@@ -82,13 +82,7 @@ const INITIAL_TENANTS: Tenant[] = [
     strictSignatureVerification: false,
     createdAt: '2026-01-15',
     whatsappAccount: {
-      status: 'connected',
-      phoneNumber: '+62 812-3456-7890',
-      pushName: 'Bali Adventours Official',
-      batteryLevel: 88,
-      isPlugged: true,
-      linkedAt: '2026-09-12 14:20:00',
-      platform: 'WhatsApp Multi-Device (Baileys v6.7)',
+      status: 'disconnected',
     },
   },
   {
@@ -101,13 +95,7 @@ const INITIAL_TENANTS: Tenant[] = [
     strictSignatureVerification: false,
     createdAt: '2026-02-01',
     whatsappAccount: {
-      status: 'connected',
-      phoneNumber: '+62 819-8765-4321',
-      pushName: 'Seminyak Sanctuaries Concierge',
-      batteryLevel: 72,
-      isPlugged: false,
-      linkedAt: '2026-09-10 09:15:00',
-      platform: 'WhatsApp Multi-Device (Baileys v6.7)',
+      status: 'disconnected',
     },
   },
   {
@@ -495,9 +483,15 @@ class Database {
       if (fs.existsSync(DB_FILE)) {
         const content = fs.readFileSync(DB_FILE, 'utf-8');
         const parsed = JSON.parse(content);
+        const tenants: Tenant[] = (parsed.tenants || INITIAL_TENANTS).map((t: Tenant) => {
+          if (t.whatsappAccount?.phoneNumber?.includes('812-3456-7890') || t.whatsappAccount?.phoneNumber?.includes('819-8765-4321')) {
+            return { ...t, whatsappAccount: { status: 'disconnected' } };
+          }
+          return t;
+        });
         return {
           version: 1,
-          tenants: parsed.tenants || INITIAL_TENANTS,
+          tenants,
           conversations: parsed.conversations || INITIAL_CONVERSATIONS,
           messages: parsed.messages || INITIAL_MESSAGES,
           workflows: parsed.workflows || INITIAL_WORKFLOWS,

@@ -715,7 +715,7 @@ async function startServer() {
   });
 
   // Disconnect tenant session
-  app.post('/api/v1/tenants/:id/whatsapp/disconnect', async (req: Request, res: Response) => {
+  app.all(['/api/v1/tenants/:id/whatsapp/disconnect', '/api/v1/tenants/:id/disconnect'], async (req: Request, res: Response) => {
     const { id } = req.params;
     const tenant = db.getTenant(id);
     if (!tenant) {
