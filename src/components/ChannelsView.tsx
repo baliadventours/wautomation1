@@ -144,7 +144,7 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
 
         <div className="flex items-center gap-3">
           <button
-            onClick={onOpenApiExplorer}
+            onClick={() => onOpenApiExplorer?.()}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition cursor-pointer shadow-xs"
           >
             <Terminal className="w-4 h-4 text-neutral-500" />
@@ -333,7 +333,7 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
               {/* Card Footer Actions */}
               <div className="bg-neutral-50 p-4 border-t border-neutral-100 rounded-b-2xl flex items-center justify-between gap-2">
                 <button
-                  onClick={() => onSelectChannel(channel.id)}
+                  onClick={() => onSelectChannel?.(channel.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                     isCurrentActive
                       ? 'bg-emerald-600 text-white font-semibold'

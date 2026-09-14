@@ -488,6 +488,7 @@ export default function App() {
               onRefreshChannel={handleRefreshChannel}
               onOpenQrPairing={(channel) => {
                 setActiveWhapiChannelId(channel.id);
+                setCurrentTab('qr-link');
               }}
               onOpenApiExplorer={() => setCurrentTab('api-explorer')}
             />
