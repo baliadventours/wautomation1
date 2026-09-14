@@ -475,14 +475,21 @@ export default function App() {
           {currentTab === 'channels' && (
             <ChannelsView
               channels={whapiChannels}
-              onSelectChannel={(channel) => {
-                setActiveWhapiChannelId(channel.id);
-                showToast(`Switched active gateway channel to ${channel.name}`);
+              activeChannelId={activeWhapiChannelId}
+              currentTenant={currentTenant}
+              onSelectChannel={(channelId) => {
+                setActiveWhapiChannelId(channelId);
+                const found = whapiChannels.find(c => c.id === channelId);
+                showToast(`Switched active gateway channel to ${found?.name || channelId}`);
               }}
               onAddChannel={handleAddWhapiChannel}
               onUpdateChannel={handleUpdateWhapiChannel}
               onDeleteChannel={handleDeleteWhapiChannel}
               onRefreshChannel={handleRefreshChannel}
+              onOpenQrPairing={(channel) => {
+                setActiveWhapiChannelId(channel.id);
+              }}
+              onOpenApiExplorer={() => setCurrentTab('api-explorer')}
             />
           )}
 

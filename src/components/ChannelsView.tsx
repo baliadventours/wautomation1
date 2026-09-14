@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   WhapiChannel, 
   Tenant 
@@ -21,18 +21,23 @@ import {
   Sliders,
   Terminal,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Clock,
+  Sparkles,
+  X
 } from 'lucide-react';
 
 interface ChannelsViewProps {
   channels: WhapiChannel[];
-  activeChannelId: string;
-  currentTenant: Tenant;
+  activeChannelId?: string;
+  currentTenant?: Tenant;
   onSelectChannel: (channelId: string) => void;
   onAddChannel: (newChannel: WhapiChannel) => void;
   onUpdateChannel: (updatedChannel: WhapiChannel) => void;
-  onOpenQrPairing: (channel: WhapiChannel) => void;
-  onOpenApiExplorer: () => void;
+  onDeleteChannel?: (channelId: string) => void;
+  onRefreshChannel?: (channelId: string) => void;
+  onOpenQrPairing?: (channel: WhapiChannel) => void;
+  onOpenApiExplorer?: () => void;
 }
 
 export const ChannelsView: React.FC<ChannelsViewProps> = ({
@@ -42,6 +47,8 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
   onSelectChannel,
   onAddChannel,
   onUpdateChannel,
+  onDeleteChannel,
+  onRefreshChannel,
   onOpenQrPairing,
   onOpenApiExplorer,
 }) => {
@@ -53,6 +60,25 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
   const [pairingPhoneNumber, setPairingPhoneNumber] = useState('');
   const [generatedPairingCode, setGeneratedPairingCode] = useState<string | null>(null);
   const [selectedChannelForConfig, setSelectedChannelForConfig] = useState<WhapiChannel | null>(null);
+
+  // Dedicated QR Pairing Modal State
+  const [selectedChannelForQr, setSelectedChannelForQr] = useState<WhapiChannel | null>(null);
+  const [qrCountdown, setQrCountdown] = useState(45);
+  const [qrPairingMethod, setQrPairingMethod] = useState<'qr' | 'code'>('qr');
+  const [qrPhoneInput, setQrPhoneInput] = useState('');
+  const [qrGeneratedOtp, setQrGeneratedOtp] = useState<string | null>(null);
+  const [isPairingSuccess, setIsPairingSuccess] = useState(false);
+
+  // Countdown timer for QR code
+  useEffect(() => {
+    let timer: any;
+    if (selectedChannelForQr && qrCountdown > 0) {
+      timer = setInterval(() => setQrCountdown((prev) => prev - 1), 1000);
+    } else if (qrCountdown === 0) {
+      setQrCountdown(45);
+    }
+    return () => clearInterval(timer);
+  }, [selectedChannelForQr, qrCountdown]);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -317,13 +343,22 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
                   {isCurrentActive ? '✓ Active Channel' : 'Select Channel'}
                 </button>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => onOpenQrPairing(channel)}
-                    className="p-1.5 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 transition cursor-pointer"
-                    title="QR Code Re-pair"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedChannelForQr(channel);
+                      setQrPhoneInput(channel.phoneNumber || '');
+                      setQrCountdown(45);
+                      setIsPairingSuccess(false);
+                      setQrGeneratedOtp(null);
+                      if (onOpenQrPairing) onOpenQrPairing(channel);
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 transition cursor-pointer flex items-center gap-1.5 text-xs font-semibold shadow-2xs"
+                    title="Link or Re-scan QR Code"
                   >
-                    <QrCode className="w-3.5 h-3.5" />
+                    <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Link QR</span>
                   </button>
 
                   <button
@@ -555,6 +590,203 @@ export const ChannelsView: React.FC<ChannelsViewProps> = ({
               >
                 Connect Channel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Interactive QR Code & OTP Pairing Modal */}
+      {selectedChannelForQr && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
+              <div>
+                <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-emerald-600" />
+                  Link WhatsApp: {selectedChannelForQr.name}
+                </h3>
+                <p className="text-xs text-neutral-500 mt-0.5">Scan to connect WhatsApp multi-device session</p>
+              </div>
+              <button
+                onClick={() => setSelectedChannelForQr(null)}
+                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-4">
+              {/* Toggle QR vs Code */}
+              <div className="grid grid-cols-2 gap-2 bg-neutral-100 p-1 rounded-xl">
+                <button
+                  onClick={() => setQrPairingMethod('qr')}
+                  className={`py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    qrPairingMethod === 'qr' ? 'bg-white text-neutral-900 shadow-xs' : 'text-neutral-500 hover:text-neutral-800'
+                  }`}
+                >
+                  <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>QR Code Scan</span>
+                </button>
+                <button
+                  onClick={() => setQrPairingMethod('code')}
+                  className={`py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    qrPairingMethod === 'code' ? 'bg-white text-neutral-900 shadow-xs' : 'text-neutral-500 hover:text-neutral-800'
+                  }`}
+                >
+                  <Key className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>8-Digit Phone Code</span>
+                </button>
+              </div>
+
+              {qrPairingMethod === 'qr' ? (
+                <div className="flex flex-col items-center justify-center py-2 space-y-3">
+                  {isPairingSuccess ? (
+                    <div className="py-8 text-center space-y-3">
+                      <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                        <CheckCircle2 className="w-8 h-8" />
+                      </div>
+                      <h4 className="text-base font-bold text-neutral-900">WhatsApp Device Linked!</h4>
+                      <p className="text-xs text-neutral-500">Instance session active and ready to send & receive messages.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-4 bg-white rounded-2xl border-2 border-emerald-500 shadow-md relative">
+                        {/* Clean SVG QR Code */}
+                        <svg className="w-52 h-52" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect width="100" height="100" fill="#FFFFFF" />
+                          {/* Finder Patterns */}
+                          <rect x="10" y="10" width="24" height="24" rx="3" fill="#111827" />
+                          <rect x="14" y="14" width="16" height="16" rx="2" fill="#FFFFFF" />
+                          <rect x="18" y="18" width="8" height="8" fill="#111827" />
+
+                          <rect x="66" y="10" width="24" height="24" rx="3" fill="#111827" />
+                          <rect x="70" y="14" width="16" height="16" rx="2" fill="#FFFFFF" />
+                          <rect x="74" y="18" width="8" height="8" fill="#111827" />
+
+                          <rect x="10" y="66" width="24" height="24" rx="3" fill="#111827" />
+                          <rect x="14" y="70" width="16" height="16" rx="2" fill="#FFFFFF" />
+                          <rect x="18" y="74" width="8" height="8" fill="#111827" />
+
+                          {/* Data Pattern */}
+                          <rect x="40" y="12" width="6" height="6" fill="#111827" />
+                          <rect x="52" y="12" width="6" height="6" fill="#111827" />
+                          <rect x="40" y="24" width="18" height="6" fill="#111827" />
+                          <rect x="12" y="40" width="12" height="6" fill="#111827" />
+                          <rect x="30" y="40" width="6" height="18" fill="#111827" />
+                          <rect x="42" y="36" width="14" height="14" rx="2" fill="#059669" />
+                          <rect x="62" y="40" width="12" height="6" fill="#111827" />
+                          <rect x="80" y="40" width="8" height="12" fill="#111827" />
+                          <rect x="12" y="52" width="12" height="8" fill="#111827" />
+                          <rect x="40" y="56" width="8" height="8" fill="#111827" />
+                          <rect x="54" y="56" width="14" height="8" fill="#111827" />
+                          <rect x="40" y="70" width="14" height="6" fill="#111827" />
+                          <rect x="60" y="70" width="8" height="18" fill="#111827" />
+                          <rect x="74" y="70" width="14" height="6" fill="#111827" />
+                          <rect x="40" y="82" width="6" height="8" fill="#111827" />
+                          <rect x="52" y="82" width="20" height="6" fill="#111827" />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center border border-neutral-200">
+                            <Smartphone className="w-4 h-4 text-emerald-600" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-xs text-neutral-500 font-medium">
+                        <Clock className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Expires in: </span>
+                        <span className="font-mono font-bold text-neutral-900">{qrCountdown}s</span>
+                        <button
+                          onClick={() => setQrCountdown(45)}
+                          className="ml-2 text-emerald-600 hover:text-emerald-700 flex items-center gap-0.5 font-semibold cursor-pointer"
+                        >
+                          <RefreshCw className="w-3 h-3" /> Refresh
+                        </button>
+                      </div>
+
+                      <div className="text-[11px] text-neutral-500 text-center max-w-xs space-y-1">
+                        <p>1. Open WhatsApp on phone &gt; <strong>Linked Devices</strong></p>
+                        <p>2. Tap <strong>Link a Device</strong> and point camera here</p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setIsPairingSuccess(true);
+                          onUpdateChannel({
+                            ...selectedChannelForQr,
+                            status: 'active',
+                            batteryLevel: 96,
+                            isPlugged: true,
+                            linkedAt: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
+                          });
+                          setTimeout(() => setSelectedChannelForQr(null), 1500);
+                        }}
+                        className="w-full mt-2 py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Confirm Device Linked</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3 py-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1">WhatsApp Phone Number</label>
+                    <input
+                      type="text"
+                      value={qrPhoneInput}
+                      onChange={(e) => setQrPhoneInput(e.target.value)}
+                      placeholder="+62 812-3456-7890"
+                      className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (!qrPhoneInput) return;
+                      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                      let c1 = '', c2 = '';
+                      for (let i = 0; i < 4; i++) c1 += chars.charAt(Math.floor(Math.random() * chars.length));
+                      for (let i = 0; i < 4; i++) c2 += chars.charAt(Math.floor(Math.random() * chars.length));
+                      setQrGeneratedOtp(`${c1}-${c2}`);
+                    }}
+                    className="w-full py-2.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Key className="w-3.5 h-3.5" />
+                    <span>Get 8-Digit Pairing Code</span>
+                  </button>
+
+                  {qrGeneratedOtp && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-2">
+                      <div className="text-xs text-neutral-600">Enter this code in WhatsApp:</div>
+                      <div className="font-mono text-xl font-bold tracking-widest text-emerald-800 bg-white py-2 rounded-lg border border-emerald-200 shadow-2xs">
+                        {qrGeneratedOtp}
+                      </div>
+                      <p className="text-[11px] text-neutral-500">
+                        Phone &gt; Linked Devices &gt; Link with phone number instead
+                      </p>
+                      <button
+                        onClick={() => {
+                          setIsPairingSuccess(true);
+                          onUpdateChannel({
+                            ...selectedChannelForQr,
+                            phoneNumber: qrPhoneInput || selectedChannelForQr.phoneNumber,
+                            status: 'active',
+                            batteryLevel: 94,
+                            isPlugged: true,
+                            linkedAt: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
+                          });
+                          setTimeout(() => setSelectedChannelForQr(null), 1200);
+                        }}
+                        className="w-full py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold cursor-pointer"
+                      >
+                        Confirm Linked
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

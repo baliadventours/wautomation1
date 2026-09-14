@@ -24,16 +24,12 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 APP_DIR="/var/whatscrm"
-DOMAIN="${1:-}"
+DOMAIN="${1:-wautomation1.vps.webdock.cloud}"
 
-if [ -z "$DOMAIN" ]; then
-  echo -e "${YELLOW}[PROMPT] Enter your domain or subdomain (e.g. crm.yourdomain.com):${NC}"
-  read -r DOMAIN
-fi
-
-if [ -z "$DOMAIN" ]; then
-  echo -e "${RED}[ERROR] Domain name is required for Nginx and SSL setup.${NC}"
-  exit 1
+if [ -z "$DOMAIN" ] && [ -t 0 ]; then
+  echo -e "${YELLOW}[PROMPT] Enter your domain (default: wautomation1.vps.webdock.cloud):${NC}"
+  read -r INPUT_DOMAIN
+  DOMAIN="${INPUT_DOMAIN:-wautomation1.vps.webdock.cloud}"
 fi
 
 echo -e "\n${BLUE}[1/6] Installing Essential Packages & Docker Engine...${NC}"
@@ -124,7 +120,7 @@ services:
 
   # 2. WhatsApp Multi-Device Gateway Daemon (Evolution API v2)
   whatsapp_gateway:
-    image: atendai/evolution-api:v2.1.2
+    image: evoapicloud/evolution-api:v2.2.0
     container_name: whatscrm_gateway
     restart: unless-stopped
     ports:
