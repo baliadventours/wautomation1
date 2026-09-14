@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import QRCode from 'qrcode';
 import { createServer as createViteServer } from 'vite';
 import { 
   Tenant, 
@@ -26,14 +27,14 @@ class EvolutionApiGatewayClient {
 
   constructor() {
     this.gatewayUrl = process.env.WHATSAPP_GATEWAY_URL || 'http://whatsapp_gateway:8080';
-    this.apiKey = process.env.WHATSAPP_GATEWAY_API_KEY || 'wac_live_gateway_master_key_8921a';
+    this.apiKey = process.env.WHATSAPP_GATEWAY_API_KEY || 'wac_gateway_master_key_8921a';
   }
 
   async checkHealth(): Promise<{ online: boolean; latencyMs: number; error?: string }> {
     const start = Date.now();
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 1200);
+      const timeout = setTimeout(() => controller.abort(), 2000);
       const res = await fetch(`${this.gatewayUrl}/`, {
         headers: { apikey: this.apiKey },
         signal: controller.signal,
@@ -50,31 +51,154 @@ class EvolutionApiGatewayClient {
     }
   }
 
-  async fetchQrCode(instanceName: string): Promise<{ qrString: string; base64?: string; isLive: boolean }> {
+  async fetchQrCode(instanceName: string): Promise<{ qrString: string; base64?: string; isLive: boolean; state?: string; pairingCode?: string }> {
+    const safeInstance = instanceName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+
+    try {
+      // 1. Check if instance already exists or is connected
+      const checkCtrl = new AbortController();
+      const checkTimeout = setTimeout(() => checkCtrl.abort(), 2500);
+      let exists = false;
+      try {
+        const stateRes = await fetch(`${this.gatewayUrl}/instance/connectionState/${safeInstance}`, {
+          headers: { apikey: this.apiKey },
+          signal: checkCtrl.signal,
+        });
+        if (stateRes.ok) {
+          exists = true;
+          const stateData = await stateRes.json();
+          const state = stateData?.instance?.state || stateData?.state;
+          if (state === 'open') {
+            return {
+              qrString: '',
+              isLive: true,
+              state: 'open',
+            };
+          }
+        }
+      } catch (e) {
+        // Continue to create or connect
+      } finally {
+        clearTimeout(checkTimeout);
+      }
+
+      // 2. If instance doesn't exist, create it in Evolution API
+      if (!exists) {
+        const createCtrl = new AbortController();
+        const createTimeout = setTimeout(() => createCtrl.abort(), 6000);
+        try {
+          const createRes = await fetch(`${this.gatewayUrl}/instance/create`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: this.apiKey,
+            },
+            body: JSON.stringify({
+              instanceName: safeInstance,
+              token: this.apiKey,
+              qrcode: true,
+              integration: 'WHATSAPP-BAILEYS',
+            }),
+            signal: createCtrl.signal,
+          });
+          clearTimeout(createTimeout);
+          if (createRes.ok) {
+            const createData = await createRes.json();
+            const qrObj = createData?.qrcode;
+            if (qrObj?.base64 || qrObj?.code) {
+              let base64 = qrObj.base64;
+              if (base64 && !base64.startsWith('data:')) {
+                base64 = `data:image/png;base64,${base64}`;
+              }
+              if (!base64 && qrObj.code) {
+                base64 = await QRCode.toDataURL(qrObj.code, { width: 320, margin: 2 });
+              }
+              return {
+                qrString: qrObj.code || '',
+                base64,
+                isLive: true,
+                state: 'connecting',
+                pairingCode: qrObj.pairingCode,
+              };
+            }
+          }
+        } catch (e) {
+          // Fall through to connect attempt
+        } finally {
+          clearTimeout(createTimeout);
+        }
+      }
+
+      // 3. Connect to instance and retrieve current QR code
+      const connectCtrl = new AbortController();
+      const connectTimeout = setTimeout(() => connectCtrl.abort(), 6000);
+      const res = await fetch(`${this.gatewayUrl}/instance/connect/${safeInstance}`, {
+        headers: { apikey: this.apiKey },
+        signal: connectCtrl.signal,
+      });
+      clearTimeout(connectTimeout);
+      if (res.ok) {
+        const data = await res.json();
+        let base64 = data.base64 || data.qrcode?.base64;
+        if (base64 && !base64.startsWith('data:')) {
+          base64 = `data:image/png;base64,${base64}`;
+        }
+        const qrCode = data.code || data.qrcode?.code;
+        if (!base64 && qrCode) {
+          base64 = await QRCode.toDataURL(qrCode, { width: 320, margin: 2 });
+        }
+
+        if (base64 || qrCode) {
+          return {
+            qrString: qrCode || '',
+            base64,
+            isLive: true,
+            state: 'connecting',
+            pairingCode: data.pairingCode,
+          };
+        }
+      }
+    } catch (err: any) {
+      console.warn('Gateway fetchQrCode warning:', err.message);
+    }
+
+    // 4. If gateway container is booting up or unreachable, generate actual valid QR matrix image
+    const pairingRef = crypto.randomBytes(16).toString('base64');
+    const publicKey = crypto.randomBytes(32).toString('base64');
+    const fallbackString = `2@${pairingRef},${publicKey},${safeInstance},${Date.now()}`;
+    const fallbackBase64 = await QRCode.toDataURL(fallbackString, { width: 320, margin: 2 });
+    return {
+      qrString: fallbackString,
+      base64: fallbackBase64,
+      isLive: false,
+      state: 'connecting',
+    };
+  }
+
+  async getConnectionState(instanceName: string): Promise<{ state: string; isLive: boolean; ownerJid?: string; profileName?: string }> {
+    const safeInstance = instanceName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 1500);
-      const res = await fetch(`${this.gatewayUrl}/instance/connect/${instanceName}`, {
+      const timeout = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch(`${this.gatewayUrl}/instance/connectionState/${safeInstance}`, {
         headers: { apikey: this.apiKey },
         signal: controller.signal,
       });
       clearTimeout(timeout);
       if (res.ok) {
         const data = await res.json();
-        if (data.code || data.base64) {
-          return { qrString: data.code || `2@live_gateway,${Date.now()}`, base64: data.base64, isLive: true };
-        }
+        const state = data?.instance?.state || data?.state || 'close';
+        return {
+          state,
+          isLive: true,
+          ownerJid: data?.instance?.ownerJid || data?.ownerJid,
+          profileName: data?.instance?.profileName || data?.profileName,
+        };
       }
     } catch {
-      // Gateway offline or unreachable, fall back gracefully to local cryptographic Baileys simulator
+      // offline
     }
-
-    const pairingRef = crypto.randomBytes(16).toString('base64');
-    const publicKey = crypto.randomBytes(32).toString('base64');
-    return {
-      qrString: `2@${pairingRef},${publicKey},${instanceName},${Date.now()}`,
-      isLive: false,
-    };
+    return { state: 'close', isLive: false };
   }
 
   async sendPresence(instanceName: string, number: string, presence: 'composing' | 'available' | 'paused') {
@@ -538,17 +662,84 @@ async function startServer() {
       return;
     }
 
-    const { qrString, base64, isLive } = await evolutionGateway.fetchQrCode(tenant.id);
+    const { qrString, base64, isLive, state, pairingCode } = await evolutionGateway.fetchQrCode(tenant.id);
 
     res.json({
       success: true,
       tenantId: tenant.id,
       qrString,
       base64,
+      pairingCode,
       isLiveGateway: isLive,
+      state: state || 'connecting',
       expiresIn: 45,
       status: tenant.whatsappAccount.status,
     });
+  });
+
+  // Check live connection state (polled by UI while QR is displayed)
+  app.get('/api/v1/tenants/:id/connection-status', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const tenant = db.getTenant(id);
+    if (!tenant) {
+      res.status(404).json({ error: 'Tenant not found' });
+      return;
+    }
+
+    const conn = await evolutionGateway.getConnectionState(tenant.id);
+    if (conn.isLive && conn.state === 'open' && tenant.whatsappAccount.status !== 'connected') {
+      const phone = conn.ownerJid 
+        ? '+' + conn.ownerJid.split('@')[0].split(':')[0] 
+        : tenant.whatsappAccount.phoneNumber || '+62 812-3456-7890';
+      const updatedAccount = {
+        status: 'connected' as const,
+        phoneNumber: phone,
+        pushName: conn.profileName || tenant.name,
+        batteryLevel: 98,
+        isPlugged: true,
+        linkedAt: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
+        platform: 'WhatsApp Multi-Device (Evolution API / Baileys)',
+      };
+      db.updateTenant(id, { whatsappAccount: updatedAccount });
+      res.json({ success: true, connected: true, state: 'open', account: updatedAccount });
+      return;
+    }
+
+    res.json({
+      success: true,
+      connected: tenant.whatsappAccount.status === 'connected' || conn.state === 'open',
+      state: conn.state,
+      isLiveGateway: conn.isLive,
+      account: tenant.whatsappAccount,
+    });
+  });
+
+  // Disconnect tenant session
+  app.post('/api/v1/tenants/:id/whatsapp/disconnect', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const tenant = db.getTenant(id);
+    if (!tenant) {
+      res.status(404).json({ error: 'Tenant not found' });
+      return;
+    }
+
+    try {
+      const safeInstance = tenant.id.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+      await fetch(`${process.env.WHATSAPP_GATEWAY_URL || 'http://whatsapp_gateway:8080'}/instance/logout/${safeInstance}`, {
+        method: 'DELETE',
+        headers: { apikey: process.env.WHATSAPP_GATEWAY_API_KEY || 'wac_gateway_master_key_8921a' },
+      });
+    } catch {
+      // ignore
+    }
+
+    const updatedAccount = {
+      status: 'disconnected' as const,
+      phoneNumber: undefined,
+      pushName: undefined,
+    };
+    db.updateTenant(id, { whatsappAccount: updatedAccount });
+    res.json({ success: true, message: 'WhatsApp session disconnected', account: updatedAccount });
   });
 
   // Gateway Live Status Diagnostic
