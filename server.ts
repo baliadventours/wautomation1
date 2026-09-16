@@ -184,9 +184,9 @@ class EvolutionApiGatewayClient {
     }
 
     try {
-      // 1. Ensure instance exists in Evolution API
+      // 1. Ensure instance exists in Evolution API and try extracting pairing code directly
       try {
-        await fetch(`${this.gatewayUrl}/instance/create`, {
+        const createRes = await fetch(`${this.gatewayUrl}/instance/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -200,6 +200,13 @@ class EvolutionApiGatewayClient {
             integration: 'WHATSAPP-BAILEYS',
           }),
         });
+        if (createRes.ok) {
+          const createData = await createRes.json();
+          const code = createData?.pairingCode || createData?.qrcode?.pairingCode || createData?.code;
+          if (code) {
+            return { pairingCode: code };
+          }
+        }
       } catch {
         // May already exist
       }

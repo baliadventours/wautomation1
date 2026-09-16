@@ -65,10 +65,10 @@ export const SuperAdminInvoices: React.FC<SuperAdminInvoicesProps> = ({
 
   const filteredInvoices = invoices.filter((inv) => {
     const matchesSearch =
-      inv.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inv.tenantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inv.customerEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inv.planName.toLowerCase().includes(searchQuery.toLowerCase());
+      (inv.invoiceNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (inv.tenantName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (inv.customerEmail || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (inv.planName || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
     const matchesMethod = methodFilter === 'all' || inv.paymentMethod === methodFilter;

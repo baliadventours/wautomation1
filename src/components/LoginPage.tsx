@@ -49,7 +49,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       }
 
       // Find matching tenant or fallback to first tenant
-      const matched = tenants.find(t => t.email.toLowerCase() === email.toLowerCase());
+      const matched = tenants.find(t => (t.email || '').toLowerCase() === (email || '').toLowerCase());
       if (matched) {
         onLoginSuccess(matched.id);
       } else if (tenants.length > 0) {
