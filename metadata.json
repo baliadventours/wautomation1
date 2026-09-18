@@ -1,6 +1,6 @@
 {
-  "name": "Whapi.Cloud - WhatsApp API Gateway & Developer Platform",
-  "description": "Developer-friendly WhatsApp REST API Gateway with multi-channel management, interactive Swagger API explorer, real-time webhooks, phone number checker, automated number warming, and no-code integrations.",
+  "name": "WhatsSaaS - Multi-Tenant WhatsApp SaaS for Evolution API",
+  "description": "Multi-tenant WhatsApp automation SaaS built on Next.js, Supabase RLS, and Evolution API v2. Connect WhatsApp via QR code, isolate tenant instances, log messages, and run automated keyword auto-replies.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

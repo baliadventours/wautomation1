@@ -10,7 +10,8 @@ import {
   Smartphone, 
   Wifi, 
   WifiOff, 
-  Radio
+  Radio,
+  LogOut
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -21,6 +22,7 @@ interface HeaderProps {
   onNavigateToQr: () => void;
   onNavigateLanding?: () => void;
   onNavigateSuperAdmin?: () => void;
+  onNavigateLogin?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -31,6 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigateToQr,
   onNavigateLanding,
   onNavigateSuperAdmin,
+  onNavigateLogin,
 }) => {
   const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
@@ -154,6 +157,17 @@ export const Header: React.FC<HeaderProps> = ({
             className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 text-xs font-semibold transition cursor-pointer"
           >
             <span>SuperAdmin</span>
+          </button>
+        )}
+
+        {onNavigateLogin && (
+          <button
+            onClick={onNavigateLogin}
+            title="Sign Out / Switch Account"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-neutral-200 hover:bg-red-50 hover:border-red-200 text-neutral-600 hover:text-red-700 text-xs font-medium transition cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Sign Out</span>
           </button>
         )}
 

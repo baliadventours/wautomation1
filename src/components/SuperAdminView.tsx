@@ -66,6 +66,7 @@ interface SuperAdminViewProps {
   onDeleteTenant?: (tenantId: string) => void;
   onNavigateMember: () => void;
   onNavigateLanding: () => void;
+  onNavigateLogin?: () => void;
 }
 
 type SuperAdminTab = 
@@ -87,6 +88,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   onDeleteTenant = (_tenantId: string) => {},
   onNavigateMember,
   onNavigateLanding,
+  onNavigateLogin,
 }) => {
   const [activeTab, setActiveTab] = useState<SuperAdminTab>('subscribers');
   const [stats, setStats] = useState<SuperAdminStats>(INITIAL_SUPERADMIN_STATS);
@@ -539,6 +541,20 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                 <span>Landing Page</span>
                 <ExternalLink className="w-3 h-3 opacity-60" />
               </button>
+
+              {onNavigateLogin && (
+                <button
+                  onClick={onNavigateLogin}
+                  className={`w-full px-3 py-1.5 rounded-xl text-[11px] font-medium transition cursor-pointer flex items-center justify-between ${
+                    theme === 'dark'
+                      ? 'text-rose-400 hover:text-rose-300 hover:bg-rose-950/30'
+                      : 'text-rose-600 hover:text-rose-700 hover:bg-rose-50'
+                  }`}
+                >
+                  <span>Sign Out</span>
+                  <ExternalLink className="w-3 h-3 opacity-60" />
+                </button>
+              )}
             </div>
           )}
 

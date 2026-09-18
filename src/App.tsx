@@ -461,6 +461,7 @@ export default function App() {
         }}
         onNavigateMember={() => setAppMode('member')}
         onNavigateLanding={() => setAppMode('landing')}
+        onNavigateLogin={() => setAppMode('login')}
       />
     );
   }
@@ -485,6 +486,7 @@ export default function App() {
         onNavigateToQr={() => setCurrentTab('channels')}
         onNavigateLanding={() => setAppMode('landing')}
         onNavigateSuperAdmin={() => setAppMode('superadmin')}
+        onNavigateLogin={() => setAppMode('login')}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -498,6 +500,7 @@ export default function App() {
           tripboneEnabled={currentTenant.tripboneEnabled !== false}
           onNavigateLanding={() => setAppMode('landing')}
           onNavigateSuperAdmin={() => setAppMode('superadmin')}
+          onNavigateLogin={() => setAppMode('login')}
         />
 
         {/* Main Workspace Content Area */}

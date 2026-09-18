@@ -17,7 +17,8 @@ import {
   Globe2, 
   Sliders, 
   ArrowUpRight,
-  Server
+  Server,
+  LogOut
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -29,6 +30,7 @@ interface SidebarProps {
   tripboneEnabled?: boolean;
   onNavigateLanding?: () => void;
   onNavigateSuperAdmin?: () => void;
+  onNavigateLogin?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -40,6 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   tripboneEnabled = true,
   onNavigateLanding,
   onNavigateSuperAdmin,
+  onNavigateLogin,
 }) => {
   const [showAdvancedTools, setShowAdvancedTools] = useState(false);
 
@@ -234,6 +237,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-[10px] font-mono bg-purple-200 text-purple-950 px-1.5 py-0.5 rounded">
               ROOT
             </span>
+          </button>
+        )}
+
+        {onNavigateLogin && (
+          <button
+            onClick={onNavigateLogin}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer font-medium"
+          >
+            <div className="flex items-center gap-2">
+              <LogOut className="w-3.5 h-3.5 text-rose-500" />
+              <span>Sign Out</span>
+            </div>
           </button>
         )}
       </div>

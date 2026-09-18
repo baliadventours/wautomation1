@@ -1826,6 +1826,146 @@ async function startServer() {
   });
 
   // -------------------------------------------------------------
+  // Next.js App Router Compatible REST Endpoints
+  // (Provides full compatibility for Supabase / Next.js clients)
+  // -------------------------------------------------------------
+
+  // GET /api/whatsapp/instances
+  app.get('/api/whatsapp/instances', (req: Request, res: Response) => {
+    const tenants = db.getTenants();
+    const instances = tenants.map((t) => ({
+      id: t.id,
+      user_id: t.id,
+      instance_name: `tenant_${t.id.replace(/[^a-zA-Z0-9]/g, '_')}`,
+      status: t.whatsappAccount.status,
+      phone_number: t.whatsappAccount.phoneNumber,
+      profile_name: t.name,
+      connected_at: t.whatsappAccount.status === 'connected' ? new Date().toISOString() : null,
+      created_at: new Date().toISOString(),
+    }));
+    res.json({ instances });
+  });
+
+  // POST /api/whatsapp/instances
+  app.post('/api/whatsapp/instances', async (req: Request, res: Response) => {
+    const { name, plan } = req.body;
+    const newId = `t-${Date.now()}`;
+    const newTenant = db.addTenant({
+      id: newId,
+      name: name || 'New WhatsApp Tenant',
+      businessType: 'Automation SaaS',
+      plan: plan || 'starter',
+      apiKey: `wac_live_${crypto.randomBytes(12).toString('hex')}`,
+      webhookSecret: `whsec_${crypto.randomBytes(12).toString('hex')}`,
+      createdAt: new Date().toISOString(),
+      whatsappAccount: {
+        status: 'connecting',
+        batteryLevel: 95,
+        linkedAt: new Date().toISOString(),
+      },
+    });
+
+    const instanceName = `tenant_${newId}`;
+    const qrResult = await evolutionGateway.fetchQrCode(instanceName);
+
+    res.json({
+      instance: {
+        id: newTenant.id,
+        user_id: newTenant.id,
+        instance_name: instanceName,
+        status: 'connecting',
+      },
+      qrcode: {
+        base64: qrResult.base64,
+        code: qrResult.qrString,
+        pairingCode: qrResult.pairingCode,
+      },
+    });
+  });
+
+  // GET /api/whatsapp/instances/:id/connect
+  app.get('/api/whatsapp/instances/:id/connect', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const tenant = db.getTenant(id);
+
+    if (!tenant) {
+      res.status(404).json({ error: 'Instance not found' });
+      return;
+    }
+
+    const qrResult = await evolutionGateway.fetchQrCode(id);
+    res.json({
+      status: tenant.whatsappAccount.status,
+      state: qrResult.state || (tenant.whatsappAccount.status === 'connected' ? 'open' : 'close'),
+      qrcode: {
+        base64: qrResult.base64,
+        code: qrResult.qrString,
+        pairingCode: qrResult.pairingCode,
+      },
+    });
+  });
+
+  // POST /api/whatsapp/instances/:id/send
+  app.post('/api/whatsapp/instances/:id/send', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { to, message } = req.body;
+
+    if (!to || !message) {
+      res.status(400).json({ error: 'Missing required fields: to and message' });
+      return;
+    }
+
+    const tenant = db.getTenant(id) || db.getTenants()[0];
+    const cleanTo = to.replace(/\D/g, '');
+    const gatewayRes = await evolutionGateway.sendText(tenant.id, cleanTo, message);
+
+    res.json({
+      success: gatewayRes.success,
+      messageId: gatewayRes.externalId || `wamsg_${Date.now()}`,
+      recipient: cleanTo,
+    });
+  });
+
+  // DELETE /api/whatsapp/instances/:id
+  app.delete('/api/whatsapp/instances/:id', (req: Request, res: Response) => {
+    const { id } = req.params;
+    const tenant = db.getTenant(id);
+    if (!tenant) {
+      res.status(404).json({ error: 'Instance not found' });
+      return;
+    }
+    // Disconnect and remove
+    db.updateTenant(id, {
+      whatsappAccount: {
+        ...tenant.whatsappAccount,
+        status: 'disconnected',
+        phoneNumber: undefined,
+      },
+    });
+    res.json({ success: true, deleted: id });
+  });
+
+  // POST /api/webhooks/evolution
+  app.post('/api/webhooks/evolution', (req: Request, res: Response) => {
+    const payload = req.body || {};
+    const event = (payload.event || payload.type || '').toUpperCase();
+    const instanceName = payload.instance || payload.instanceName;
+
+    const logEntry: WebhookLog = {
+      id: `log-evo-${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString(),
+      event: event || 'evolution.event',
+      destination: '/api/webhooks/evolution',
+      status: 'success',
+      httpStatus: 200,
+      payload: JSON.stringify(payload),
+    };
+    db.addWebhookLog(logEntry);
+
+    res.json({ received: true, event, instance: instanceName });
+  });
+
+  // -------------------------------------------------------------
   // VITE SPA MIDDLEWARE / STATIC SERVING
   // -------------------------------------------------------------
   if (process.env.NODE_ENV !== 'production') {
